@@ -145,13 +145,74 @@ const getStudentAttendanceHistoryService = async (studentId) => {
 		.populate('trainer', 'trainerName phoneNumber activeStatus')
 		.sort({ classNumber: 1 })
 
+	const studentDetails = {
+		studentId: student._id,
+		name: student.name,
+		phoneNumber: student.mobileNumber,
+		place: student.place,
+	}
+
+	const attendanceDetails = attendances.map((attendance) => ({
+		attendanceId: attendance._id,
+		classNumber: attendance.classNumber,
+		classDate: attendance.classDate,
+		trainer: attendance.trainer,
+		remarks: attendance.remarks,
+	}))
+
 	return {
 		status: true,
 		statusCode: 200,
 		message: 'Student attendance history fetched successfully',
 		data: {
-			student,
-			attendances,
+			studentDetails,
+			attendanceDetails,
+		},
+	}
+}
+
+const getAttendanceStudentsSummaryService = async () => {
+	const summary = await Attendance.aggregate([
+		{
+			$group: {
+				_id: '$student',
+				totalClassesTaken: { $sum: '$classNumber' },
+				lastClassNumber: { $max: '$classNumber' },
+			},
+		},
+		{
+			$lookup: {
+				from: 'students',
+				localField: '_id',
+				foreignField: '_id',
+				as: 'student',
+			},
+		},
+		{
+			$unwind: '$student',
+		},
+		{
+			$project: {
+				_id: 0,
+				studentId: '$student._id',
+				studentName: '$student.name',
+				studentPlace: '$student.place',
+				phoneNumber: '$student.mobileNumber',
+				totalClassesTaken: 1,
+				lastClassNumber: 1,
+			},
+		},
+		{
+			$sort: { studentName: 1 },
+		},
+	])
+
+	return {
+		status: true,
+		statusCode: 200,
+		message: 'Attendance student summary fetched successfully',
+		data: {
+			summary,
 		},
 	}
 }
@@ -229,6 +290,7 @@ module.exports = {
 	createAttendanceService,
 	getAttendancesService,
 	getStudentAttendanceHistoryService,
+	getAttendanceStudentsSummaryService,
 	updateAttendanceService,
 	deleteAttendanceService,
 }
