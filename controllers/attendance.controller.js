@@ -2,6 +2,7 @@ const {
 	createAttendanceService,
 	getAttendancesService,
 	getStudentAttendanceHistoryService,
+	getAttendanceStudentsSummaryService,
 	updateAttendanceService,
 	deleteAttendanceService,
 } = require('../services/attendance.service')
@@ -115,6 +116,21 @@ const getStudentAttendanceHistory = async (req, res, next) => {
 	}
 }
 
+const getAttendanceStudentsSummary = async (req, res, next) => {
+	try {
+		const result = await getAttendanceStudentsSummaryService()
+
+		return res.status(result.statusCode).json({
+			status: result.status,
+			statusCode: result.statusCode,
+			message: result.message,
+			...result.data,
+		})
+	} catch (error) {
+		next(error)
+	}
+}
+
 const updateAttendance = async (req, res, next) => {
 	try {
 		const { attendanceId } = req.params
@@ -180,6 +196,7 @@ module.exports = {
 	createAttendance,
 	getAttendances,
 	getStudentAttendanceHistory,
+	getAttendanceStudentsSummary,
 	updateAttendance,
 	deleteAttendance,
 }
