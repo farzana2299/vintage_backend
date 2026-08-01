@@ -1,7 +1,9 @@
 const Student = require('../models/student.model')
+const { generateTestsForStudent } = require('./drivingTest.service')
 
 const createStudentService = async (payload) => {
 	const student = await Student.create(payload)
+	await generateTestsForStudent(student)
 
 	return {
 		status: true,

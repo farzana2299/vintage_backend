@@ -73,7 +73,7 @@ const studentSchema = new mongoose.Schema(
 		},
 		classOfVehicle: {
 			type: String,
-			enum: ['LMV', 'MCWG'],
+			enum: ['LMV', 'MCWG', 'LMV & MCWG'],
 		},
 		roadSafetyClassAttended: {
 			type: String,
