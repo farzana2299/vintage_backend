@@ -28,6 +28,36 @@ const createAttendanceService = async ({ student, classNumber, classDate, traine
 	const eligibility = await ensureEligibleStudentAndTrainer(student, trainer)
 	if (!eligibility.status) return eligibility
 
+	const dayStart = new Date(classDate)
+	dayStart.setHours(0, 0, 0, 0)
+	const dayEnd = new Date(classDate)
+	dayEnd.setHours(23, 59, 59, 999)
+
+	const existingAttendance = await Attendance.findOne({
+		student,
+		trainer,
+		classDate: { $gte: dayStart, $lte: dayEnd },
+	})
+
+	if (existingAttendance) {
+		existingAttendance.classNumber += classNumber
+		if (remarks) {
+			existingAttendance.remarks = remarks
+		}
+		await existingAttendance.save()
+
+		const updatedAttendance = await Attendance.findById(existingAttendance._id)
+			.populate('student', 'name mobileNumber currentStatus')
+			.populate('trainer', 'trainerName phoneNumber activeStatus')
+
+		return {
+			status: true,
+			statusCode: 200,
+			message: 'Existing attendance for this date updated successfully',
+			data: updatedAttendance,
+		}
+	}
+
 	const existingClass = await Attendance.findOne({ student, classNumber })
 	if (existingClass) {
 		return {
