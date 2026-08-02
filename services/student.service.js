@@ -1,5 +1,5 @@
 const Student = require('../models/student.model')
-const { generateTestsForStudent } = require('./drivingTest.service')
+const { generateTestsForStudent, deleteTestsForStudent } = require('./drivingTest.service')
 
 const createStudentService = async (payload) => {
 	const student = await Student.create(payload)
@@ -101,6 +101,10 @@ const updateStudentService = async (studentId, updateData) => {
 	Object.assign(student, updateData)
 	await student.save()
 
+	if (updateData.classOfVehicle) {
+		await generateTestsForStudent(student)
+	}
+
 	return {
 		status: true,
 		statusCode: 200,
@@ -121,6 +125,7 @@ const deleteStudentService = async (studentId) => {
 	}
 
 	await Student.findByIdAndDelete(studentId)
+	await deleteTestsForStudent(studentId)
 
 	return {
 		status: true,

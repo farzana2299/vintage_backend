@@ -1,5 +1,31 @@
 const mongoose = require('mongoose')
 
+const testHistorySchema = new mongoose.Schema(
+	{
+		testDate: {
+			type: Date,
+		},
+		testStatus: {
+			type: String,
+			required: [true, 'Test status is required'],
+			enum: {
+				values: ['Passed', 'Failed'],
+				message: 'History entry status must be Passed or Failed',
+			},
+		},
+		remarks: {
+			type: String,
+			trim: true,
+			maxlength: [500, 'Remarks cannot exceed 500 characters'],
+		},
+		recordedAt: {
+			type: Date,
+			default: Date.now,
+		},
+	},
+	{ _id: false }
+)
+
 const drivingTestSchema = new mongoose.Schema(
 	{
 		student: {
@@ -19,7 +45,7 @@ const drivingTestSchema = new mongoose.Schema(
 			type: String,
 			required: [true, 'Test name is required'],
 			enum: {
-				values: ['H Test', 'Road Test', '8 Test', 'LMV Road Test', 'MCWG Road Test'],
+				values: ['H Test', 'Road Test', 'LMV Road Test', '8 Test', 'MCWG Road Test'],
 				message: 'Invalid test name',
 			},
 		},
@@ -40,15 +66,7 @@ const drivingTestSchema = new mongoose.Schema(
 			trim: true,
 			maxlength: [500, 'Remarks cannot exceed 500 characters'],
 		},
-		nextTestDate: {
-			type: Date,
-			required: [
-				function () {
-					return this.testStatus === 'Failed'
-				},
-				'Next test date is required when test status is Failed',
-			],
-		},
+		history: [testHistorySchema],
 	},
 	{
 		timestamps: true,
@@ -57,8 +75,7 @@ const drivingTestSchema = new mongoose.Schema(
 
 drivingTestSchema.index({ student: 1, testName: 1 }, { unique: true })
 drivingTestSchema.index({ testStatus: 1 })
-drivingTestSchema.index({ testDate: -1 })
-drivingTestSchema.index({ vehicleClass: 1 })
+drivingTestSchema.index({ testDate: 1 })
 
 const DrivingTest = mongoose.model('DrivingTest', drivingTestSchema)
 

@@ -1,39 +1,15 @@
 const {
-	getTestsService,
-	getStudentTestHistoryService,
-	updateTestService,
+	getTestsSummaryListService,
+	getStudentTestDetailService,
+	bulkScheduleTestsService,
+	recordTestResultService,
+	rescheduleTestService,
+	getTestHistoryService,
 } = require('../services/drivingTest.service')
 
-const getTests = async (req, res, next) => {
+const getTestsSummaryList = async (req, res, next) => {
 	try {
-		const {
-			search = '',
-			student = '',
-			studentId = '',
-			testName = '',
-			testStatus = '',
-			vehicleClass = '',
-			testDate = '',
-			startDate = '',
-			endDate = '',
-			page = 1,
-			limit = 10,
-			sortBy = '-createdAt',
-		} = req.query
-
-		const result = await getTestsService({
-			search,
-			student: student || studentId,
-			testName,
-			testStatus,
-			vehicleClass,
-			testDate,
-			startDate,
-			endDate,
-			page,
-			limit,
-			sortBy,
-		})
+		const result = await getTestsSummaryListService()
 
 		return res.status(result.statusCode).json({
 			status: result.status,
@@ -46,10 +22,10 @@ const getTests = async (req, res, next) => {
 	}
 }
 
-const getStudentTestHistory = async (req, res, next) => {
+const getStudentTestDetail = async (req, res, next) => {
 	try {
 		const { studentId } = req.params
-		const result = await getStudentTestHistoryService(studentId)
+		const result = await getStudentTestDetailService(studentId)
 
 		if (!result.status) {
 			return res.status(result.statusCode).json({
@@ -70,12 +46,38 @@ const getStudentTestHistory = async (req, res, next) => {
 	}
 }
 
-const updateTest = async (req, res, next) => {
+const bulkScheduleTests = async (req, res, next) => {
+	try {
+		const { studentId } = req.params
+		const { testDate } = req.body
+
+		const result = await bulkScheduleTestsService(studentId, testDate)
+
+		if (!result.status) {
+			return res.status(result.statusCode).json({
+				status: result.status,
+				statusCode: result.statusCode,
+				message: result.message,
+			})
+		}
+
+		return res.status(result.statusCode).json({
+			status: result.status,
+			statusCode: result.statusCode,
+			message: result.message,
+			...result.data,
+		})
+	} catch (error) {
+		next(error)
+	}
+}
+
+const recordTestResult = async (req, res, next) => {
 	try {
 		const { testId } = req.params
-		const payload = { ...req.body }
+		const { testStatus, remarks } = req.body
 
-		const result = await updateTestService(testId, payload)
+		const result = await recordTestResultService(testId, { testStatus, remarks })
 
 		if (!result.status) {
 			return res.status(result.statusCode).json({
@@ -96,8 +98,61 @@ const updateTest = async (req, res, next) => {
 	}
 }
 
+const rescheduleTest = async (req, res, next) => {
+	try {
+		const { testId } = req.params
+		const { nextTestDate, testDate } = req.body
+
+		const result = await rescheduleTestService(testId, nextTestDate || testDate)
+
+		if (!result.status) {
+			return res.status(result.statusCode).json({
+				status: result.status,
+				statusCode: result.statusCode,
+				message: result.message,
+			})
+		}
+
+		return res.status(result.statusCode).json({
+			status: result.status,
+			statusCode: result.statusCode,
+			message: result.message,
+			data: result.data,
+		})
+	} catch (error) {
+		next(error)
+	}
+}
+
+const getTestHistory = async (req, res, next) => {
+	try {
+		const { testId } = req.params
+		const result = await getTestHistoryService(testId)
+
+		if (!result.status) {
+			return res.status(result.statusCode).json({
+				status: result.status,
+				statusCode: result.statusCode,
+				message: result.message,
+			})
+		}
+
+		return res.status(result.statusCode).json({
+			status: result.status,
+			statusCode: result.statusCode,
+			message: result.message,
+			...result.data,
+		})
+	} catch (error) {
+		next(error)
+	}
+}
+
 module.exports = {
-	getTests,
-	getStudentTestHistory,
-	updateTest,
+	getTestsSummaryList,
+	getStudentTestDetail,
+	bulkScheduleTests,
+	recordTestResult,
+	rescheduleTest,
+	getTestHistory,
 }
