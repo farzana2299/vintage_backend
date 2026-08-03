@@ -28,6 +28,36 @@ const createAttendanceService = async ({ student, classNumber, classDate, traine
 	const eligibility = await ensureEligibleStudentAndTrainer(student, trainer)
 	if (!eligibility.status) return eligibility
 
+	const dayStart = new Date(classDate)
+	dayStart.setHours(0, 0, 0, 0)
+	const dayEnd = new Date(classDate)
+	dayEnd.setHours(23, 59, 59, 999)
+
+	const existingAttendance = await Attendance.findOne({
+		student,
+		trainer,
+		classDate: { $gte: dayStart, $lte: dayEnd },
+	})
+
+	if (existingAttendance) {
+		existingAttendance.classNumber += classNumber
+		if (remarks) {
+			existingAttendance.remarks = remarks
+		}
+		await existingAttendance.save()
+
+		const updatedAttendance = await Attendance.findById(existingAttendance._id)
+			.populate('student', 'name mobileNumber currentStatus')
+			.populate('trainer', 'trainerName phoneNumber activeStatus')
+
+		return {
+			status: true,
+			statusCode: 200,
+			message: 'Existing attendance for this date updated successfully',
+			data: updatedAttendance,
+		}
+	}
+
 	const existingClass = await Attendance.findOne({ student, classNumber })
 	if (existingClass) {
 		return {
@@ -145,13 +175,74 @@ const getStudentAttendanceHistoryService = async (studentId) => {
 		.populate('trainer', 'trainerName phoneNumber activeStatus')
 		.sort({ classNumber: 1 })
 
+	const studentDetails = {
+		studentId: student._id,
+		name: student.name,
+		phoneNumber: student.mobileNumber,
+		place: student.place,
+	}
+
+	const attendanceDetails = attendances.map((attendance) => ({
+		attendanceId: attendance._id,
+		classNumber: attendance.classNumber,
+		classDate: attendance.classDate,
+		trainer: attendance.trainer,
+		remarks: attendance.remarks,
+	}))
+
 	return {
 		status: true,
 		statusCode: 200,
 		message: 'Student attendance history fetched successfully',
 		data: {
-			student,
-			attendances,
+			studentDetails,
+			attendanceDetails,
+		},
+	}
+}
+
+const getAttendanceStudentsSummaryService = async () => {
+	const summary = await Attendance.aggregate([
+		{
+			$group: {
+				_id: '$student',
+				totalClassesTaken: { $sum: '$classNumber' },
+				lastClassNumber: { $max: '$classNumber' },
+			},
+		},
+		{
+			$lookup: {
+				from: 'students',
+				localField: '_id',
+				foreignField: '_id',
+				as: 'student',
+			},
+		},
+		{
+			$unwind: '$student',
+		},
+		{
+			$project: {
+				_id: 0,
+				studentId: '$student._id',
+				studentName: '$student.name',
+				studentPlace: '$student.place',
+				phoneNumber: '$student.mobileNumber',
+				totalClassesTaken: 1,
+				lastClassNumber: 1,
+			},
+		},
+		{
+			$sort: { studentName: 1 },
+		},
+	])
+
+	return {
+		status: true,
+		statusCode: 200,
+		message: 'Attendance student summary fetched successfully',
+		data: {
+			summary,
 		},
 	}
 }
@@ -225,10 +316,16 @@ const deleteAttendanceService = async (attendanceId) => {
 	}
 }
 
+const deleteAttendanceForStudent = async (studentId) => {
+	await Attendance.deleteMany({ student: studentId })
+}
+
 module.exports = {
 	createAttendanceService,
 	getAttendancesService,
 	getStudentAttendanceHistoryService,
+	getAttendanceStudentsSummaryService,
 	updateAttendanceService,
 	deleteAttendanceService,
+	deleteAttendanceForStudent,
 }

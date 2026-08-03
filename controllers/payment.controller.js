@@ -1,41 +1,40 @@
 const {
-	createAttendanceService,
-	getAttendancesService,
-	getStudentAttendanceHistoryService,
-	getAttendanceStudentsSummaryService,
-	updateAttendanceService,
-	deleteAttendanceService,
-} = require('../services/attendance.service')
+	createPaymentService,
+	getPaymentsService,
+	getStudentPaymentHistoryService,
+	getPaymentStudentsSummaryService,
+	updatePaymentService,
+	deletePaymentService,
+} = require('../services/payment.service')
 
-const createAttendance = async (req, res, next) => {
+const createPayment = async (req, res, next) => {
 	try {
-		const {
-			student,
-			studentId,
-			classNumber,
-			classDate,
-			trainer,
-			trainerId,
-			remarks,
-		} = req.body
+		const { student, studentId, paymentType, classNumber, amount, paymentDate } = req.body
 
 		const selectedStudent = student || studentId
-		const selectedTrainer = trainer || trainerId
 
-		if (!selectedStudent || !classNumber || !classDate || !selectedTrainer) {
+		if (!selectedStudent || !paymentType || !amount || !paymentDate) {
 			return res.status(400).json({
 				status: false,
 				statusCode: 400,
-				message: 'Please provide studentId/student, classNumber, classDate and trainerId/trainer',
+				message: 'Please provide studentId/student, paymentType, amount and paymentDate',
 			})
 		}
 
-		const result = await createAttendanceService({
+		if (paymentType === 'Class' && !classNumber) {
+			return res.status(400).json({
+				status: false,
+				statusCode: 400,
+				message: 'classNumber is required when paymentType is Class',
+			})
+		}
+
+		const result = await createPaymentService({
 			student: selectedStudent,
+			paymentType,
 			classNumber,
-			classDate,
-			trainer: selectedTrainer,
-			remarks,
+			amount,
+			paymentDate,
 		})
 
 		if (!result.status) {
@@ -57,25 +56,28 @@ const createAttendance = async (req, res, next) => {
 	}
 }
 
-const getAttendances = async (req, res, next) => {
+const getPayments = async (req, res, next) => {
 	try {
 		const {
 			search = '',
 			student = '',
 			studentId = '',
-			trainer = '',
-			trainerId = '',
-			classDate = '',
+			paymentType = '',
+			paymentDate = '',
+			startDate = '',
+			endDate = '',
 			page = 1,
 			limit = 10,
-			sortBy = '-classDate',
+			sortBy = '-paymentDate',
 		} = req.query
 
-		const result = await getAttendancesService({
+		const result = await getPaymentsService({
 			search,
 			student: student || studentId,
-			trainer: trainer || trainerId,
-			classDate,
+			paymentType,
+			paymentDate,
+			startDate,
+			endDate,
 			page,
 			limit,
 			sortBy,
@@ -92,10 +94,10 @@ const getAttendances = async (req, res, next) => {
 	}
 }
 
-const getStudentAttendanceHistory = async (req, res, next) => {
+const getStudentPaymentHistory = async (req, res, next) => {
 	try {
 		const { studentId } = req.params
-		const result = await getStudentAttendanceHistoryService(studentId)
+		const result = await getStudentPaymentHistoryService(studentId)
 
 		if (!result.status) {
 			return res.status(result.statusCode).json({
@@ -116,9 +118,9 @@ const getStudentAttendanceHistory = async (req, res, next) => {
 	}
 }
 
-const getAttendanceStudentsSummary = async (req, res, next) => {
+const getPaymentStudentsSummary = async (req, res, next) => {
 	try {
-		const result = await getAttendanceStudentsSummaryService()
+		const result = await getPaymentStudentsSummaryService()
 
 		return res.status(result.statusCode).json({
 			status: result.status,
@@ -131,23 +133,18 @@ const getAttendanceStudentsSummary = async (req, res, next) => {
 	}
 }
 
-const updateAttendance = async (req, res, next) => {
+const updatePayment = async (req, res, next) => {
 	try {
-		const { attendanceId } = req.params
+		const { paymentId } = req.params
 		const payload = { ...req.body }
 
 		if (payload.studentId && !payload.student) {
 			payload.student = payload.studentId
 		}
 
-		if (payload.trainerId && !payload.trainer) {
-			payload.trainer = payload.trainerId
-		}
-
 		delete payload.studentId
-		delete payload.trainerId
 
-		const result = await updateAttendanceService(attendanceId, payload)
+		const result = await updatePaymentService(paymentId, payload)
 
 		if (!result.status) {
 			return res.status(result.statusCode).json({
@@ -168,10 +165,10 @@ const updateAttendance = async (req, res, next) => {
 	}
 }
 
-const deleteAttendance = async (req, res, next) => {
+const deletePayment = async (req, res, next) => {
 	try {
-		const { attendanceId } = req.params
-		const result = await deleteAttendanceService(attendanceId)
+		const { paymentId } = req.params
+		const result = await deletePaymentService(paymentId)
 
 		if (!result.status) {
 			return res.status(result.statusCode).json({
@@ -193,10 +190,10 @@ const deleteAttendance = async (req, res, next) => {
 }
 
 module.exports = {
-	createAttendance,
-	getAttendances,
-	getStudentAttendanceHistory,
-	getAttendanceStudentsSummary,
-	updateAttendance,
-	deleteAttendance,
+	createPayment,
+	getPayments,
+	getStudentPaymentHistory,
+	getPaymentStudentsSummary,
+	updatePayment,
+	deletePayment,
 }
