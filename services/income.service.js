@@ -325,6 +325,10 @@ const deleteAutomaticIncomeForPayment = async (paymentId) => {
 	await Income.findOneAndDelete({ payment: paymentId })
 }
 
+const deleteIncomeForStudent = async (studentId) => {
+	await Income.deleteMany({ student: studentId })
+}
+
 module.exports = {
 	createManualIncomeService,
 	getIncomesService,
@@ -333,4 +337,5 @@ module.exports = {
 	deleteManualIncomeService,
 	syncAutomaticIncomeForPayment,
 	deleteAutomaticIncomeForPayment,
+	deleteIncomeForStudent,
 }

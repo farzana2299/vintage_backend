@@ -1,4 +1,4 @@
-const { getDashboardService } = require('../services/dashboard.service')
+const { getDashboardService, getRoadSafetyPendingCountService } = require('../services/dashboard.service')
 
 const getDashboard = async (req, res, next) => {
 	try {
@@ -17,6 +17,24 @@ const getDashboard = async (req, res, next) => {
 	}
 }
 
+const getRoadSafetyPendingCount = async (req, res, next) => {
+	try {
+		const { fromDate = '', toDate = '' } = req.query
+
+		const result = await getRoadSafetyPendingCountService({ fromDate, toDate })
+
+		return res.status(result.statusCode).json({
+			status: result.status,
+			statusCode: result.statusCode,
+			message: result.message,
+			...result.data,
+		})
+	} catch (error) {
+		next(error)
+	}
+}
+
 module.exports = {
 	getDashboard,
+	getRoadSafetyPendingCount,
 }
