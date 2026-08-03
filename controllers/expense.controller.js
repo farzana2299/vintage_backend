@@ -8,9 +8,10 @@ const {
 
 const createExpense = async (req, res, next) => {
 	try {
-		const { expenseDate, expenseType, staff, staffId, amount, remarks } = req.body
+		const { expenseDate, expenseType, staff, staffId, student, studentId, amount, remarks } = req.body
 
 		const selectedStaff = staff || staffId
+		const selectedStudent = student || studentId
 
 		if (!expenseDate || !expenseType || !amount) {
 			return res.status(400).json({
@@ -28,10 +29,19 @@ const createExpense = async (req, res, next) => {
 			})
 		}
 
+		if (expenseType === 'RTO Fees' && !selectedStudent) {
+			return res.status(400).json({
+				status: false,
+				statusCode: 400,
+				message: 'studentId/student is required when expenseType is RTO Fees',
+			})
+		}
+
 		const result = await createExpenseService({
 			expenseDate,
 			expenseType,
 			staff: selectedStaff,
+			student: selectedStudent,
 			amount,
 			remarks,
 		})
@@ -61,6 +71,8 @@ const getExpenses = async (req, res, next) => {
 			search = '',
 			staff = '',
 			staffId = '',
+			student = '',
+			studentId = '',
 			expenseType = '',
 			expenseDate = '',
 			startDate = '',
@@ -73,6 +85,7 @@ const getExpenses = async (req, res, next) => {
 		const result = await getExpensesService({
 			search,
 			staff: staff || staffId,
+			student: student || studentId,
 			expenseType,
 			expenseDate,
 			startDate,
@@ -119,7 +132,12 @@ const updateExpense = async (req, res, next) => {
 			payload.staff = payload.staffId
 		}
 
+		if (payload.studentId && !payload.student) {
+			payload.student = payload.studentId
+		}
+
 		delete payload.staffId
+		delete payload.studentId
 
 		const result = await updateExpenseService(expenseId, payload)
 
