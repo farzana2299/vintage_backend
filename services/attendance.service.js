@@ -316,6 +316,10 @@ const deleteAttendanceService = async (attendanceId) => {
 	}
 }
 
+const deleteAttendanceForStudent = async (studentId) => {
+	await Attendance.deleteMany({ student: studentId })
+}
+
 module.exports = {
 	createAttendanceService,
 	getAttendancesService,
@@ -323,4 +327,5 @@ module.exports = {
 	getAttendanceStudentsSummaryService,
 	updateAttendanceService,
 	deleteAttendanceService,
+	deleteAttendanceForStudent,
 }

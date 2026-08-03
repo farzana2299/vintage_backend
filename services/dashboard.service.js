@@ -38,6 +38,27 @@ const getFilteredStudentIds = async (vehicleClass) => {
 	return students.map((student) => student._id)
 }
 
+const getRoadSafetyPendingCountService = async ({ fromDate = '', toDate = '' }) => {
+	const { start, end } = resolveDateRange(fromDate, toDate)
+
+	const count = await Student.countDocuments({
+		roadSafetyClassAttended: { $ne: 'Yes' },
+		studentType: 'Driving Licence',
+		createdAt: { $gte: start, $lte: end },
+	})
+
+	return {
+		status: true,
+		statusCode: 200,
+		message: 'Road safety class pending count fetched successfully',
+		data: {
+			fromDate: start,
+			toDate: end,
+			count,
+		},
+	}
+}
+
 const buildStudentFilter = (vehicleClass) => (vehicleClass ? { classOfVehicle: vehicleClass } : {})
 
 const getSummaryCards = async ({ start, end, studentIds, vehicleClass, financialSummary }) => {
@@ -545,4 +566,5 @@ const getDashboardService = async ({ fromDate = '', toDate = '', vehicleClass = 
 
 module.exports = {
 	getDashboardService,
+	getRoadSafetyPendingCountService,
 }

@@ -331,6 +331,10 @@ const deletePaymentService = async (paymentId) => {
 	}
 }
 
+const deletePaymentsForStudent = async (studentId) => {
+	await Payment.deleteMany({ student: studentId })
+}
+
 module.exports = {
 	createPaymentService,
 	getPaymentsService,
@@ -338,4 +342,5 @@ module.exports = {
 	getPaymentStudentsSummaryService,
 	updatePaymentService,
 	deletePaymentService,
+	deletePaymentsForStudent,
 }
