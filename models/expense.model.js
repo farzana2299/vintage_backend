@@ -14,8 +14,8 @@ const expenseSchema = new mongoose.Schema(
 			type: String,
 			required: [true, 'Expense type is required'],
 			enum: {
-				values: ['Staff Salary', 'Rent', 'Petrol', 'CNG', 'Others'],
-				message: 'Expense type must be Staff Salary, Rent, Petrol, CNG or Others',
+				values: ['Staff Salary', 'Rent', 'Petrol', 'CNG', 'RTO Fees','Others'],
+				message: 'Expense type must be Staff Salary, Rent, Petrol, CNG, RTO Fees or Others',
 			},
 		},
 		staff: {
@@ -26,6 +26,16 @@ const expenseSchema = new mongoose.Schema(
 					return this.expenseType === 'Staff Salary'
 				},
 				'Staff name is required when expense type is Staff Salary',
+			],
+		},
+		student: {
+			type: mongoose.Schema.Types.ObjectId,
+			ref: 'Student',
+			required: [
+				function () {
+					return this.expenseType === 'RTO Fees'
+				},
+				'Student is required when expense type is RTO Fees',
 			],
 		},
 		amount: {
@@ -45,6 +55,7 @@ const expenseSchema = new mongoose.Schema(
 )
 
 expenseSchema.index({ staff: 1 })
+expenseSchema.index({ student: 1 })
 expenseSchema.index({ expenseType: 1 })
 expenseSchema.index({ expenseDate: -1 })
 

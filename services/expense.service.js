@@ -1,5 +1,6 @@
 const Expense = require('../models/expense.model')
 const Trainer = require('../models/trainer.model')
+const Student = require('../models/student.model')
 
 const validateStaffRequirement = async (expenseType, staffId) => {
 	if (expenseType === 'Staff Salary' && !staffId) {
@@ -24,22 +25,51 @@ const validateStaffRequirement = async (expenseType, staffId) => {
 	return { status: true }
 }
 
-const createExpenseService = async ({ expenseDate, expenseType, staff, amount, remarks }) => {
-	const validation = await validateStaffRequirement(expenseType, staff)
-	if (!validation.status) return validation
+const validateStudentRequirement = async (expenseType, studentId) => {
+	if (expenseType === 'RTO Fees' && !studentId) {
+		return {
+			status: false,
+			statusCode: 400,
+			message: 'Student is required when expense type is RTO Fees',
+		}
+	}
+
+	if (studentId) {
+		const student = await Student.findById(studentId)
+		if (!student) {
+			return {
+				status: false,
+				statusCode: 404,
+				message: 'Student not found',
+			}
+		}
+	}
+
+	return { status: true }
+}
+
+const populateExpense = (query) =>
+	query
+		.populate('staff', 'trainerName phoneNumber activeStatus')
+		.populate('student', 'name mobileNumber currentStatus')
+
+const createExpenseService = async ({ expenseDate, expenseType, staff, student, amount, remarks }) => {
+	const staffValidation = await validateStaffRequirement(expenseType, staff)
+	if (!staffValidation.status) return staffValidation
+
+	const studentValidation = await validateStudentRequirement(expenseType, student)
+	if (!studentValidation.status) return studentValidation
 
 	const expense = await Expense.create({
 		expenseDate,
 		expenseType,
 		staff: staff || undefined,
+		student: student || undefined,
 		amount,
 		remarks,
 	})
 
-	const populatedExpense = await Expense.findById(expense._id).populate(
-		'staff',
-		'trainerName phoneNumber activeStatus'
-	)
+	const populatedExpense = await populateExpense(Expense.findById(expense._id))
 
 	return {
 		status: true,
@@ -52,6 +82,7 @@ const createExpenseService = async ({ expenseDate, expenseType, staff, amount, r
 const getExpensesService = async ({
 	search = '',
 	staff = '',
+	student = '',
 	expenseType = '',
 	expenseDate = '',
 	startDate = '',
@@ -64,6 +95,10 @@ const getExpensesService = async ({
 
 	if (staff) {
 		query.staff = staff
+	}
+
+	if (student) {
+		query.student = student
 	}
 
 	if (expenseType) {
@@ -93,9 +128,11 @@ const getExpensesService = async ({
 	if (search) {
 		const searchRegex = new RegExp(search, 'i')
 		const staffMatches = await Trainer.find({ trainerName: searchRegex }).select('_id')
+		const studentMatches = await Student.find({ name: searchRegex }).select('_id')
 
 		query.$or = [
 			{ staff: { $in: staffMatches.map((item) => item._id) } },
+			{ student: { $in: studentMatches.map((item) => item._id) } },
 			{ expenseType: searchRegex },
 		]
 	}
@@ -104,8 +141,7 @@ const getExpensesService = async ({
 	const limitNumber = parseInt(limit, 10)
 	const skip = (pageNumber - 1) * limitNumber
 
-	const expenses = await Expense.find(query)
-		.populate('staff', 'trainerName phoneNumber activeStatus')
+	const expenses = await populateExpense(Expense.find(query))
 		.sort(sortBy)
 		.skip(skip)
 		.limit(limitNumber)
@@ -223,21 +259,26 @@ const updateExpenseService = async (expenseId, payload) => {
 
 	const updatedExpenseType = payload.expenseType || expense.expenseType
 	const updatedStaffId = payload.staff !== undefined ? payload.staff : expense.staff
+	const updatedStudentId = payload.student !== undefined ? payload.student : expense.student
 
-	const validation = await validateStaffRequirement(updatedExpenseType, updatedStaffId)
-	if (!validation.status) return validation
+	const staffValidation = await validateStaffRequirement(updatedExpenseType, updatedStaffId)
+	if (!staffValidation.status) return staffValidation
+
+	const studentValidation = await validateStudentRequirement(updatedExpenseType, updatedStudentId)
+	if (!studentValidation.status) return studentValidation
 
 	if (updatedExpenseType !== 'Staff Salary' && !payload.staff) {
 		expense.staff = undefined
 	}
 
+	if (updatedExpenseType !== 'RTO Fees' && !payload.student) {
+		expense.student = undefined
+	}
+
 	Object.assign(expense, payload)
 	await expense.save()
 
-	const updatedExpense = await Expense.findById(expenseId).populate(
-		'staff',
-		'trainerName phoneNumber activeStatus'
-	)
+	const updatedExpense = await populateExpense(Expense.findById(expenseId))
 
 	return {
 		status: true,
@@ -248,10 +289,7 @@ const updateExpenseService = async (expenseId, payload) => {
 }
 
 const deleteExpenseService = async (expenseId) => {
-	const expense = await Expense.findById(expenseId).populate(
-		'staff',
-		'trainerName phoneNumber activeStatus'
-	)
+	const expense = await populateExpense(Expense.findById(expenseId))
 
 	if (!expense) {
 		return {

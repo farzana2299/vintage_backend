@@ -9,7 +9,9 @@ const {
 
 const getTestsSummaryList = async (req, res, next) => {
 	try {
-		const result = await getTestsSummaryListService()
+		const { fromDate = '', toDate = '', page = 1, limit = 10 } = req.query
+
+		const result = await getTestsSummaryListService({ fromDate, toDate, page, limit })
 
 		return res.status(result.statusCode).json({
 			status: result.status,

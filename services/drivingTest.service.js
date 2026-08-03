@@ -57,27 +57,45 @@ const evaluateStudentCompletion = async (studentId) => {
 	)
 }
 
-const getTestsSummaryListService = async () => {
-	const summary = await DrivingTest.aggregate([
+const getTestsSummaryListService = async ({ fromDate = '', toDate = '', page = 1, limit = 10 }) => {
+	const dateConditions = [{ $eq: ['$testStatus', 'Pending'] }, { $ne: ['$testDate', null] }]
+
+	if (fromDate) {
+		const start = new Date(fromDate)
+		start.setUTCHours(0, 0, 0, 0)
+		dateConditions.push({ $gte: ['$testDate', start] })
+	}
+
+	if (toDate) {
+		const end = new Date(toDate)
+		end.setUTCHours(23, 59, 59, 999)
+		dateConditions.push({ $lte: ['$testDate', end] })
+	}
+
+	const basePipeline = [
 		{
 			$group: {
 				_id: '$student',
-				pendingDates: {
+				matchingDates: {
 					$push: {
-						$cond: [
-							{ $and: [{ $eq: ['$testStatus', 'Pending'] }, { $ne: ['$testDate', null] }] },
-							'$testDate',
-							'$$REMOVE',
-						],
+						$cond: [{ $and: dateConditions }, '$testDate', '$$REMOVE'],
 					},
 				},
 			},
 		},
 		{
 			$addFields: {
-				upcomingTestDate: { $min: '$pendingDates' },
+				upcomingTestDate: { $min: '$matchingDates' },
 			},
 		},
+	]
+
+	// When a date filter is supplied, only students with a Pending test in that
+	// window should appear; without a filter, every student with tests still shows,
+	// with upcomingTestDate left blank if none of their tests are dated yet.
+	const filterStage = fromDate || toDate ? [{ $match: { upcomingTestDate: { $ne: null } } }] : []
+
+	const lookupAndShape = [
 		{
 			$lookup: {
 				from: 'students',
@@ -102,6 +120,21 @@ const getTestsSummaryListService = async () => {
 		{
 			$sort: { studentName: 1 },
 		},
+	]
+
+	const pageNumber = parseInt(page, 10) || 1
+	const limitNumber = parseInt(limit, 10) || 10
+	const skip = (pageNumber - 1) * limitNumber
+
+	const countResult = await DrivingTest.aggregate([...basePipeline, ...filterStage, { $count: 'total' }])
+	const total = countResult[0]?.total || 0
+
+	const summary = await DrivingTest.aggregate([
+		...basePipeline,
+		...filterStage,
+		...lookupAndShape,
+		{ $skip: skip },
+		{ $limit: limitNumber },
 	])
 
 	return {
@@ -110,6 +143,12 @@ const getTestsSummaryListService = async () => {
 		message: 'Driving test summary list fetched successfully',
 		data: {
 			summary,
+			pagination: {
+				total,
+				page: pageNumber,
+				limit: limitNumber,
+				totalPages: Math.ceil(total / limitNumber) || 0,
+			},
 		},
 	}
 }
