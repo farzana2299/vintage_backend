@@ -31,7 +31,11 @@ const imageFilter = (req, file, cb) => {
 	cb(null, true)
 }
 
-const upload = multer({ storage, fileFilter: imageFilter })
+const upload = multer({
+	storage,
+	fileFilter: imageFilter,
+	limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+})
 
 router.post('/student', jwtMiddleware, upload.single('photo'), createStudent)
 router.get('/students', jwtMiddleware, getStudents)

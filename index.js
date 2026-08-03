@@ -1,6 +1,9 @@
 const cors = require('cors')
 require('dotenv').config()
 const express = require('express')
+const helmet = require('helmet')
+const morgan = require('morgan')
+const mongoose = require('mongoose')
 const userRouter = require('./routers/user.router')
 const enquiryRouter = require('./routers/enquiry.router')
 const trainerRouter = require('./routers/trainer.router')
@@ -16,8 +19,36 @@ const server = express()
 
 require('./database/connection')
 
-server.use(cors())
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:5173')
+	.split(',')
+	.map((origin) => origin.trim())
+	.filter(Boolean)
+
+server.use(
+	cors({
+		origin: (origin, callback) => {
+			// Allow non-browser requests (no Origin header, e.g. curl/Postman/server-to-server)
+			if (!origin || allowedOrigins.includes(origin)) {
+				return callback(null, true)
+			}
+			return callback(new Error('Not allowed by CORS'))
+		},
+	})
+)
+server.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
+server.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'))
 server.use(express.json())
+
+server.get('/health', (req, res) => {
+	const dbConnected = mongoose.connection.readyState === 1
+	res.status(dbConnected ? 200 : 503).json({
+		status: dbConnected,
+		statusCode: dbConnected ? 200 : 503,
+		message: dbConnected ? 'OK' : 'Database not connected',
+		uptime: process.uptime(),
+	})
+})
+
 server.use(userRouter)
 server.use(enquiryRouter)
 server.use(trainerRouter)
