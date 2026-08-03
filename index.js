@@ -19,16 +19,18 @@ const server = express()
 
 require('./database/connection')
 
+const normalizeOrigin = (value) => value.trim().replace(/\/+$/, '')
+
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:5173')
 	.split(',')
-	.map((origin) => origin.trim())
+	.map(normalizeOrigin)
 	.filter(Boolean)
 
 server.use(
 	cors({
 		origin: (origin, callback) => {
 			// Allow non-browser requests (no Origin header, e.g. curl/Postman/server-to-server)
-			if (!origin || allowedOrigins.includes(origin)) {
+			if (!origin || allowedOrigins.includes(normalizeOrigin(origin))) {
 				return callback(null, true)
 			}
 			return callback(new Error('Not allowed by CORS'))
