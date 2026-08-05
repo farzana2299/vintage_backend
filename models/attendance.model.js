@@ -36,7 +36,7 @@ const attendanceSchema = new mongoose.Schema(
 	}
 )
 
-attendanceSchema.index({ student: 1, classNumber: 1 }, { unique: true })
+attendanceSchema.index({ student: 1, classNumber: 1 })
 attendanceSchema.index({ classDate: -1 })
 attendanceSchema.index({ trainer: 1 })
 

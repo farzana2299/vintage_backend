@@ -58,15 +58,6 @@ const createAttendanceService = async ({ student, classNumber, classDate, traine
 		}
 	}
 
-	const existingClass = await Attendance.findOne({ student, classNumber })
-	if (existingClass) {
-		return {
-			status: false,
-			statusCode: 409,
-			message: 'Class number already exists for this student',
-		}
-	}
-
 	const attendance = await Attendance.create({
 		student,
 		classNumber,
@@ -261,22 +252,6 @@ const updateAttendanceService = async (attendanceId, payload) => {
 	const updatedTrainerId = payload.trainer || attendance.trainer.toString()
 	const eligibility = await ensureEligibleStudentAndTrainer(updatedStudentId, updatedTrainerId)
 	if (!eligibility.status) return eligibility
-
-	if (payload.classNumber && payload.classNumber !== attendance.classNumber) {
-		const duplicateClass = await Attendance.findOne({
-			student: updatedStudentId,
-			classNumber: payload.classNumber,
-			_id: { $ne: attendanceId },
-		})
-
-		if (duplicateClass) {
-			return {
-				status: false,
-				statusCode: 409,
-				message: 'Class number already exists for this student',
-			}
-		}
-	}
 
 	Object.assign(attendance, payload)
 	await attendance.save()
